@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#faf7f2">
+<title>パスワード帳</title>
+<style>
+  :root{
+    --bg:#faf7f2; --card:#ffffff; --text:#3d3a35; --sub:#8a847a;
+    --line:#e8e2d8; --accent:#F6CF68; --accent-dark:#e0b743;
+    --warn:#c97a2b; --warn-bg:#fdf1e2; --danger:#d9776b; --soft:#f2ede4;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{overflow-y:scroll}
+  html,body{background:var(--bg);color:var(--text);
+    font-family:"Meiryo","メイリオ","Hiragino Kaku Gothic ProN",sans-serif;
+    font-size:16px;-webkit-tap-highlight-color:transparent}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  input,textarea{font-family:inherit;font-size:16px}
+  .hidden{display:none !important}
+  .app{max-width:640px;margin:0 auto}
+
+  /* ===== ロック画面 ===== */
+  #lock{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;
+    align-items:center;justify-content:center;padding:24px;z-index:50}
+  #lock .icon{font-size:40px;margin-bottom:8px}
+  #lockTitle{font-size:18px;font-weight:bold;margin-bottom:6px;text-align:center}
+  #lockMsg{font-size:13px;color:var(--sub);min-height:20px;margin-bottom:18px;text-align:center}
+  #lockMsg.err{color:var(--danger)}
+  .dots{display:flex;gap:16px;margin-bottom:28px}
+  .dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--sub)}
+  .dot.on{background:var(--text);border-color:var(--text)}
+  .pad{display:grid;grid-template-columns:repeat(3,72px);gap:14px}
+  .pad button{width:72px;height:72px;border-radius:50%;background:var(--card);
+    font-size:26px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .pad button:active{background:var(--soft)}
+  .pad .ghost{background:none;box-shadow:none;font-size:15px;color:var(--sub)}
+  #lockForgot{margin-top:22px;font-size:13px;color:var(--sub);text-decoration:underline}
+  #lockCancel{margin-top:22px;font-size:14px;color:var(--sub);text-decoration:underline}
+
+  /* ===== メイン ===== */
+  header{position:sticky;top:0;background:var(--bg);padding:12px 16px 10px;z-index:5;
+    border-bottom:1px solid var(--line)}
+  .head-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  h1{font-size:18px}
+  .head-btns{display:flex;gap:6px}
+  .icon-btn{padding:6px 10px;border-radius:8px;font-size:14px;background:var(--soft)}
+  .search-box{position:relative}
+  #search{width:100%;padding:12px 40px 12px 40px;border:2px solid var(--line);border-radius:12px;
+    background:var(--card);font-size:17px}
+  #search:focus{outline:none;border-color:var(--accent)}
+  #search::-webkit-search-cancel-button,#search::-webkit-search-decoration{-webkit-appearance:none;appearance:none;display:none}
+  .search-ico{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:16px;opacity:.6}
+  #clearSearch{position:absolute;right:8px;top:50%;transform:translateY(-50%);
+    width:28px;height:28px;border-radius:50%;background:var(--soft);font-size:14px;color:var(--sub)}
+  .count{font-size:12px;color:var(--sub);margin-top:6px}
+  .chips{display:flex;gap:6px;margin-top:10px;overflow-x:auto;white-space:nowrap;scrollbar-width:none;padding-bottom:2px}
+  .chips::-webkit-scrollbar{display:none}
+  .chips-wrap{position:relative}
+  .dup-btn{font-size:12px;font-weight:bold;color:var(--warn);background:var(--warn-bg);padding:2px 9px;border-radius:10px;margin-left:6px}
+  .dup-btn.on{box-shadow:0 0 0 1px var(--warn) inset}
+  .chip{flex-shrink:0;padding:5px 12px;border-radius:16px;font-size:13px;background:var(--card);border:1px solid var(--line)}
+  .chip.on{background:var(--accent);border-color:var(--accent);font-weight:bold}
+  .tfa{display:inline-block;font-size:11px;font-weight:normal;padding:2px 7px;border-radius:10px;margin-left:6px;vertical-align:2px;word-break:keep-all}
+  .tfa.on{background:#e6f2ea;color:#3f7a55}
+  .tfa.off{background:var(--warn-bg);color:var(--warn)}
+  .tfa.na{background:#f0efed;color:#9a958d}
+  .keep-mark{font-size:14px;margin-left:6px;vertical-align:1px;font-weight:normal;
+    font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif}
+  .chip.tfa-chip{border-color:#e6c9a6;color:var(--warn)}
+  .chip.tfa-chip.on{background:var(--warn-bg);border-color:var(--warn);color:var(--warn)}
+  .trash-item{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+  .trash-item .t-name{font-weight:bold;font-size:15px;word-break:break-all}
+  .trash-item .t-sub{font-size:12px;color:var(--sub);margin:3px 0 8px}
+  .trash-item .t-btns{display:flex;gap:6px}
+  .trash-item .t-btns button{flex:1;padding:8px;border-radius:8px;font-size:13px;background:var(--soft)}
+  .trash-item .t-btns .restore{background:var(--accent);font-weight:bold}
+  .trash-item .t-btns .purge{color:var(--danger)}
+  .keep-note{font-size:12px;color:var(--sub);text-align:center;margin-top:10px}
+  .seg{display:flex;gap:6px}
+  .seg button{flex:1;padding:9px 0;border-radius:10px;border:1px solid var(--line);background:var(--card);font-size:14px}
+  .seg button.on{background:var(--accent);border-color:var(--accent);font-weight:bold}
+  .tag{display:inline-block;font-size:11px;font-weight:normal;padding:2px 8px;border-radius:10px;background:var(--soft);
+    color:#6b655c;margin-left:8px;vertical-align:2px;word-break:keep-all}
+  .count b{color:var(--warn)}
+  main{padding:12px 16px 90px}
+  .empty{text-align:center;color:var(--sub);font-size:14px;margin-top:48px;line-height:1.9}
+
+  .item{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    margin-bottom:10px;padding:12px 14px}
+  .item-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px}
+  .item-name{font-weight:bold;font-size:16px;word-break:break-all;padding-top:3px}
+  .row{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px dashed var(--line)}
+  .row .ico{width:20px;flex-shrink:0;text-align:center;font-size:14px;
+    font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif}
+  .row .val{flex:1;word-break:break-all;font-size:15px}
+  .mono{font-family:"Consolas","Menlo",monospace;letter-spacing:.5px}
+  .mini{font-size:12px;padding:6px 10px;border-radius:7px;background:var(--soft);flex-shrink:0}
+  .mini:active{background:var(--accent)}
+  .memo{white-space:pre-wrap;font-size:13px;color:var(--sub);line-height:1.6}
+  .memo-row{align-items:flex-start}
+  .memo-row .ico{line-height:1.6;font-size:13px}
+  .date{font-size:12px;color:var(--sub)}
+  .dup{margin-top:6px;font-size:12px;background:var(--warn-bg);color:var(--warn);
+    padding:6px 9px;border-radius:7px;line-height:1.5}
+  mark{background:#fbe7a6;color:inherit;border-radius:2px}
+
+  .fab-wrap{position:fixed;right:18px;bottom:calc(24px + env(safe-area-inset-bottom));z-index:20;
+    display:flex;flex-direction:column;align-items:flex-end;gap:12px}
+  #scrollTop{width:44px;height:44px;border-radius:50%;background:var(--accent);color:var(--text);
+    box-shadow:0 2px 6px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center}
+  #scrollTop:active{background:var(--accent-dark)}
+  .icon-btn.add{background:var(--accent);font-weight:bold}
+  .icon-btn.add:active{background:var(--accent-dark)}
+
+  /* ===== シート ===== */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:30;display:flex;align-items:flex-end;justify-content:center}
+  .sheet{background:var(--bg);width:100%;max-width:640px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;
+    padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+  .sheet h2{font-size:17px;margin-bottom:14px}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:13px;color:var(--sub);margin-bottom:4px}
+  .field input,.field textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+  .field textarea{min-height:64px;resize:vertical}
+  .field .check{display:flex;color:var(--text);margin-bottom:0;align-items:flex-start;gap:8px;font-size:14px;line-height:1.5;margin-top:8px;cursor:pointer}
+  .field .check input{width:18px;height:18px;padding:0;margin:2px 4px 0 0;border:none;flex-shrink:0;accent-color:var(--accent-dark)}
+  .check small{display:block;color:var(--sub);font-size:12px}
+  .pass-wrap{display:flex;gap:6px}
+  .pass-wrap input{flex:1}
+  #dupNote{margin-top:6px}
+  .btns{display:flex;gap:8px;margin-top:6px}
+  .btn{flex:1;padding:12px;border-radius:10px;font-size:15px;background:var(--soft)}
+  .btn.primary{background:var(--accent);font-weight:bold}
+  .btn.danger{color:var(--danger)}
+  .menu-item{display:block;width:100%;text-align:left;padding:13px 12px;background:var(--card);
+    border:1px solid var(--line);border-radius:10px;margin-bottom:8px;font-size:15px}
+  .menu-item small{display:block;color:var(--sub);font-size:12px;margin-top:3px;line-height:1.5}
+  .menu-label{font-size:12px;color:var(--sub);margin:12px 2px 6px}
+  .tips{background:var(--soft);border-radius:10px;padding:10px 12px;margin-bottom:8px;
+    font-size:13px;line-height:1.8}
+  .tips-title{font-weight:bold;margin-bottom:2px}
+
+  #toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#3d3a35;color:#fff;
+    padding:9px 16px;border-radius:20px;font-size:14px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none;
+    max-width:90vw;text-align:center}
+  #toast.show{opacity:1}
+
+  /* ===== 印刷 ===== */
+  #print{display:none}
+  @media print{
+    body > *:not(#print){display:none !important}
+    #print{display:block;padding:8mm;font-size:10.5pt;color:#000}
+    #print h1{font-size:14pt;margin-bottom:3mm}
+    #print p{font-size:9pt;margin-bottom:4mm}
+    #print table{width:100%;border-collapse:collapse}
+    #print th,#print td{border:1px solid #999;padding:2mm 2.5mm;text-align:left;vertical-align:top;word-break:break-all}
+    #print th{background:#eee;font-size:9pt}
+    #print tr{page-break-inside:avoid}
+    #print .mono{font-family:"Consolas","Menlo",monospace}
+  }
+</style>
+</head>
+<body>
+
+<!-- ロック画面 -->
+<div id="lock">
+  <div class="icon">🔒</div>
+  <div id="lockTitle">暗証番号を入力</div>
+  <div id="lockMsg"></div>
+  <div class="dots" id="dots">
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+  </div>
+  <div class="pad" id="pad"></div>
+  <button id="lockForgot" class="hidden">暗証番号を忘れたとき</button>
+  <button id="lockCancel" class="hidden">キャンセル</button>
+</div>
+
+<!-- メイン -->
+<div id="app" class="app hidden">
+  <header>
+    <div class="head-row">
+      <h1>パスワード帳</h1>
+      <div class="head-btns">
+        <button class="icon-btn add" id="btnAdd">＋ 追加</button>
+        <button class="icon-btn" id="btnMenu">メニュー</button>
+        <button class="icon-btn" id="btnLock" title="ロック">🔒</button>
+      </div>
+    </div>
+    <div class="search-box">
+      <span class="search-ico">🔍</span>
+      <input id="search" type="search" placeholder="アプリ名・カテゴリ・メールでさがす" autocomplete="off">
+      <button id="clearSearch" class="hidden" aria-label="検索をクリア">✕</button>
+    </div>
+    <div class="chips-wrap">
+      <div class="chips hidden" id="chips"></div>
+    </div>
+    <div class="count" id="count"></div>
+  </header>
+  <main id="list"></main>
+</div>
+<div class="fab-wrap hidden" id="fabWrap">
+  <button id="scrollTop" class="hidden" aria-label="上に戻る"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 14 12 7 18 14"></polyline></svg></button>
+</div>
+
+<!-- 入力シート -->
+<div class="overlay hidden" id="editOverlay">
+  <div class="sheet">
+    <h2 id="editTitle">追加</h2>
+    <div class="field"><label>アプリ・サービス名（必須）</label><input id="fName" placeholder="例：メルカリ"></div>
+    <div class="field"><label>カテゴリ</label>
+      <input id="fCat" list="catList" autocomplete="off" placeholder="例：化粧品・素材・型紙">
+      <datalist id="catList"></datalist>
+      <div style="font-size:12px;color:var(--sub);margin-top:4px">前に入れたものから選べます。新しく打ってもOK</div>
+    </div>
+    <div class="field"><label>メールアドレス・ID</label>
+      <input id="fUser" list="userList" autocomplete="off" autocapitalize="off" placeholder="前に入れたものから選べます">
+      <datalist id="userList"></datalist>
+    </div>
+    <div class="field"><label>パスワード</label>
+      <div class="pass-wrap">
+        <input id="fPass" autocomplete="off" autocapitalize="off" class="mono">
+        <button class="mini" id="btnGen">自動作成</button>
+      </div>
+      <label class="check"><input type="checkbox" id="fNoSym"><span>記号を使わない<small>記号が使えないサイト用</small></span></label>
+      <div id="dupNote" class="dup hidden"></div>
+      <label class="check"><input type="checkbox" id="fOk"><span>同じパスワードでも注意しない<small>お試しで作ったアカウントなど、乗っ取られても困らないもの用</small></span></label>
+    </div>
+    <div class="field"><label>2段階認証</label>
+      <div class="seg" id="fTfa">
+        <button type="button" data-v="on">設定済</button>
+        <button type="button" data-v="off">未設定</button>
+        <button type="button" data-v="na">機能なし</button>
+      </div>
+      <div style="font-size:12px;color:var(--sub);margin-top:4px">選んだボタンをもう一度押すと、選んでいない状態にもどせます</div>
+    </div>
+    <div class="field"><label>パスワードを変えた日</label>
+      <div class="pass-wrap">
+        <input id="fDate" placeholder="例：2026.10.19" autocomplete="off" inputmode="decimal">
+        <button type="button" class="mini" id="btnToday">今日</button>
+      </div>
+      <div style="font-size:12px;color:var(--sub);margin-top:4px">今日変えたときは「今日」を押してください。空のままなら「いつ変えたか不明」になります<br>（編集でパスワードを書きかえて保存したときは、自動で今日になります）</div>
+    </div>
+    <div class="field"><label>メモ</label><textarea id="fMemo" placeholder="秘密の質問、登録した電話番号など"></textarea></div>
+    <div class="btns">
+      <button class="btn" id="btnEditCancel">やめる</button>
+      <button class="btn primary" id="btnEditSave">保存</button>
+    </div>
+    <div class="field">
+      <label class="check"><input type="checkbox" id="fKeep"><span>このデータは消さない<small>チェックすると「削除する」ボタンが出なくなります</small></span></label>
+    </div>
+    <div class="btns"><button class="btn danger hidden" id="btnDelete">削除する（ゴミ箱へ）</button></div>
+    <div class="keep-note hidden" id="keepNote"><span class="keep-mark" style="margin:0 2px 0 0">🛡️</span>消さない設定になっています</div>
+  </div>
+</div>
+
+<!-- メニューシート -->
+<div class="overlay hidden" id="menuOverlay">
+  <div class="sheet">
+    <h2>メニュー</h2>
+    <button class="menu-item" id="mPrint">🖨 紙に印刷する<small>アプリ名順の一覧表で印刷します</small></button>
+    <div class="menu-label">WPSなどの表計算ソフトとやりとり（CSV）</div>
+    <button class="menu-item" id="mExport">💾 書き出す<small>今のデータをCSVファイルで保存します（バックアップ・機種変更用）</small></button>
+    <button class="menu-item" id="mImport">📂 読み込む<small>CSVファイルからデータを入れます</small></button>
+    <button class="menu-item" id="mTemplate">📄 入力用のひな形をもらう<small>WPSで一から入力したいとき用の、空のCSVです</small></button>
+    <div class="tips">
+      <div class="tips-title">💡 WPSで入力するときのコツ</div>
+      <div>⭐ 保存するときは「CSV（カンマ区切り）」を選ぶ</div>
+      <div>・1行目の見出し（アプリ名・メールアドレス・ID…）はそのままでOK</div>
+      <div>・「（例）」の行は消しても、残しても大丈夫（自動で読み飛ばします）</div>
+      <div>・カテゴリは2列目に（空でもOK）</div>
+      <div>・2段階認証は「設定済」「未設定」「機能なし」のどれか（空でもOK）</div>
+      <div>・「同じでも注意しない」「消さない」にしたいものは、その列に「〇」</div>
+      <div>・「変えた日」は 2026.10.19 や 2026/10/19 のどちらでもOK</div>
+      <div>・読み込みが終わったCSVは、置きっぱなしにしないでね</div>
+    </div>
+    <div class="menu-label">そのほか</div>
+    <button class="menu-item" id="mTrash">🗑 ゴミ箱<small id="mTrashInfo">削除したものは、ここから元にもどせます</small></button>
+    <button class="menu-item" id="mPin">🔑 暗証番号を変える</button>
+    <div class="btns"><button class="btn" id="mClose">閉じる</button></div>
+  </div>
+</div>
+
+<!-- ゴミ箱シート -->
+<div class="overlay hidden" id="trashOverlay">
+  <div class="sheet">
+    <h2>🗑 ゴミ箱</h2>
+    <p style="font-size:13px;color:var(--sub);margin-bottom:12px;line-height:1.7">「もどす」で一覧に戻せます。<br>「完全に消す」を押すまで、ずっと残ります。</p>
+    <div id="trashList"></div>
+    <div class="btns"><button class="btn danger hidden" id="trashEmpty">ゴミ箱を空にする</button></div>
+    <div class="btns"><button class="btn" id="trashClose">閉じる</button></div>
+  </div>
+</div>
+
+<!-- 読み込み方法シート -->
+<div class="overlay hidden" id="importOverlay">
+  <div class="sheet">
+    <h2>読み込み方</h2>
+    <p id="importInfo" style="font-size:14px;margin-bottom:12px;line-height:1.7"></p>
+    <button class="menu-item" id="impAdd">➕ 今のデータに足す<small>アプリ名・メール・パスワードがまったく同じものは、重ねて入れません</small></button>
+    <button class="menu-item" id="impReplace">🔁 今のデータと入れかえる<small>今入っているデータは消えて、ファイルの中身だけになります</small></button>
+    <div class="btns"><button class="btn" id="impCancel">やめる</button></div>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept=".csv,text/csv,text/plain" class="hidden">
+<div id="toast"></div>
+<div id="print"></div>
+
+<script>
+(() => {
+  const STORE = 'pwnote2-data';
+  const PINKEY = 'pwnote2-pin';
+  const UNLOCK = 'pwnote2-open';
+  const TRASH = 'pwnote2-trash';
+  const KEEPMIG = 'pwnote2-keepmig';
+  let trash = [];
+  const HEADERS = ['アプリ名','カテゴリ','メールアドレス・ID','パスワード','メモ','パスワードを変えた日','同じでも注意しない','2段階認証','消さない'];
+  let curCat = null;
+  const DUP = '\u0002dup';  // 「⚠ 同じパスワード」で絞りこみ中のしるし
+  const TFA = '\u0001tfa';  // 「🔓2段階」で絞りこみ中のしるし
+  const TFA_LABEL = {on:'設定済', off:'未設定', na:'機能なし'};
+  let editTfa = '';
+  function parseTfa(v){
+    const t = String(v ?? '').normalize('NFKC').trim();
+    if(!t) return '';
+    if(/^(設定済|設定済み|済|on|オン|〇|○|◯)$/i.test(t)) return 'on';
+    if(/^(未設定|未|まだ|off|オフ|×)$/i.test(t)) return 'off';
+    if(/^(機能なし|なし|非対応|ー|-|―)$/i.test(t)) return 'na';
+    return '';
+  }       // null=すべて ／ ''=カテゴリなし ／ 文字=そのカテゴリ
+  // 「ALBION（化粧品）」→ 名前「ALBION」とカテゴリ「化粧品」に分ける
+  function splitCat(name){
+    const m = String(name ?? '').match(/^(.+?)\s*[（(]([^（）()]+)[）)]\s*$/);
+    return m ? [m[1].trim(), m[2].trim()] : [String(name ?? '').trim(), ''];
+  }
+  const $ = id => document.getElementById(id);
+
+  let entries = [];
+  let editingId = null;
+  let pin = '';
+  let mode = 'unlock';     // setup1 / setup2 / unlock / change1 / change2
+  let tempPin = '';
+  let pendingRows = null;
+  let editOrig = null;     // 編集を開いたときのパスワードと日付
+
+  // ---------- 保存まわり ----------
+  function load(){
+    try { entries = JSON.parse(localStorage.getItem(STORE)) || []; } catch(e){ entries = []; }
+    // 前の形のデータ：入力した日を「変えた日」に
+    let changed = false;
+    entries.forEach(e => {
+      if(!('passDate' in e)){ e.passDate = e.pass ? fmtDot(e.updated || Date.now()) : ''; changed = true; }
+      if(!('ok' in e)){ e.ok = false; changed = true; }
+      if(!('cat' in e)){ const [n, c] = splitCat(e.name); e.name = n; e.cat = c; changed = true; }
+      if(!('tfa' in e)){ e.tfa = ''; changed = true; }
+      if(!('keep' in e)){ e.keep = false; changed = true; }
+    });
+    // 最初の1回だけ：カテゴリ「重要」のものを「消さない」に
+    let mig = null; try { mig = localStorage.getItem(KEEPMIG); } catch(e){}
+    if(!mig){
+      entries.forEach(e => { if(e.cat === '重要'){ e.keep = true; changed = true; } });
+      try { localStorage.setItem(KEEPMIG, '1'); } catch(e){}
+    }
+    if(changed) save();
+    try { trash = JSON.parse(localStorage.getItem(TRASH)) || []; } catch(e){ trash = []; }
+  }
+  function save(){
+    try { localStorage.setItem(STORE, JSON.stringify(entries)); }
+    catch(e){ toast('保存できませんでした'); }
+  }
+  function saveTrash(){
+    try { localStorage.setItem(TRASH, JSON.stringify(trash)); }
+    catch(e){ toast('保存できませんでした'); }
+  }
+  // 変更して保存。保存できなかったら元にもどして false を返す（うそのお知らせを出さないため）
+  function commit(change){
+    const bE = JSON.stringify(entries), bT = JSON.stringify(trash);
+    change();
+    try {
+      localStorage.setItem(STORE, JSON.stringify(entries));
+      localStorage.setItem(TRASH, JSON.stringify(trash));
+      return true;
+    } catch(e){
+      entries = JSON.parse(bE); trash = JSON.parse(bT);
+      try { localStorage.setItem(STORE, bE); localStorage.setItem(TRASH, bT); } catch(e2){}
+      toast('保存できませんでした。空き容量を確認してください', 4000);
+      return false;
+    }
+  }
+  async function hashPin(p){
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('pwnote2:' + p));
+    return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+  const newId = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random());
+
+  // ---------- ロック画面 ----------
+  const padKeys = ['1','2','3','4','5','6','7','8','9','','0','del'];
+  $('pad').innerHTML = padKeys.map(k =>
+    k === '' ? '<span></span>' :
+    k === 'del' ? '<button class="ghost" data-k="del">消す</button>' :
+    `<button data-k="${k}">${k}</button>`).join('');
+  $('pad').addEventListener('click', e => {
+    const b = e.target.closest('button'); if(!b) return;
+    const k = b.dataset.k;
+    if(k === 'del'){ pin = pin.slice(0,-1); drawDots(); return; }
+    if(pin.length >= 4) return;
+    pin += k; drawDots();
+    if(pin.length === 4) setTimeout(onPinDone, 120);
+  });
+  function drawDots(){
+    [...$('dots').children].forEach((d,i) => d.classList.toggle('on', i < pin.length));
+  }
+  function showLock(m, title, msg = '', err = false){
+    mode = m; pin = ''; drawDots();
+    $('lockTitle').textContent = title;
+    $('lockMsg').textContent = msg;
+    $('lockMsg').classList.toggle('err', err);
+    $('lockCancel').classList.toggle('hidden', !['change1','change2'].includes(m));
+    $('lockForgot').classList.toggle('hidden', m !== 'unlock');
+    $('app').classList.add('hidden'); $('fabWrap').classList.add('hidden');
+    $('lock').classList.remove('hidden');
+  }
+  $('lockCancel').addEventListener('click', () => { tempPin = ''; openApp(); });
+  $('lockForgot').addEventListener('click', () => {
+    if(!confirm('暗証番号を新しく決め直しますか？\n（入っているデータはそのまま残ります）')) return;
+    showLock('setup1', '新しい暗証番号を決める', '4桁の番号を入力してください');
+  });
+
+  async function onPinDone(){
+    const p = pin;
+    if(mode === 'setup1' || mode === 'change1'){
+      tempPin = p;
+      showLock(mode === 'setup1' ? 'setup2' : 'change2', 'もう一度入力', '確認のため、同じ番号をもう一度');
+    }
+    else if(mode === 'setup2' || mode === 'change2'){
+      if(p !== tempPin){
+        showLock(mode === 'setup2' ? 'setup1' : 'change1', '暗証番号を決める', '番号が違いました。最初からお願いします', true);
+        return;
+      }
+      try { localStorage.setItem(PINKEY, await hashPin(p)); } catch(e){}
+      const msg = mode === 'setup2' ? '暗証番号を設定しました' : '暗証番号を変えました';
+      tempPin = ''; markOpen(); openApp(); toast(msg);
+    }
+    else if(mode === 'unlock'){
+      let saved = null; try { saved = localStorage.getItem(PINKEY); } catch(e){}
+      if(saved === await hashPin(p)){ markOpen(); openApp(); }
+      else showLock('unlock', '暗証番号を入力', '番号が違います', true);
+    }
+  }
+  function markOpen(){ try { sessionStorage.setItem(UNLOCK, '1'); } catch(e){} }
+
+  // ---------- メイン ----------
+  function openApp(){
+    $('lock').classList.add('hidden'); $('app').classList.remove('hidden');
+    $('fabWrap').classList.remove('hidden'); render(); placeFab(); updateScrollTop();
+  }
+  function updateScrollTop(){ $('scrollTop').classList.toggle('hidden', window.scrollY <= 300); }
+  // 「上に戻る」をアプリの列のすぐ外側（右下）に置く。すき間がないスマホでは画面の右下
+  function placeFab(){
+    const r = $('app').getBoundingClientRect();
+    if(!r.width) return;
+    const outside = document.documentElement.clientWidth - r.right - 44 - 4;
+    $('fabWrap').style.right = Math.max(18, outside) + 'px';
+  }
+  window.addEventListener('scroll', updateScrollTop);
+  window.addEventListener('resize', placeFab);
+  $('scrollTop').addEventListener('click', () => window.scrollTo({top:0, behavior:'smooth'}));
+  $('btnLock').addEventListener('click', () => {
+    try { sessionStorage.removeItem(UNLOCK); } catch(e){}
+    closeAll(); showLock('unlock', '暗証番号を入力');
+  });
+
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fmtDate = t => { const d = new Date(t); return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`; };
+  function fmtDot(t){ const d = new Date(t);
+    return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`; }
+  // いろいろな書き方の日付を「2026.10.19」にそろえる（読めなければそのまま）
+  function normDate(s){
+    s = String(s ?? '').normalize('NFKC').replace(/[〜~]/g,'').trim();
+    if(!s) return '';
+    const m = s.match(/^(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+    if(m) return `${m[1]}.${m[2].padStart(2,'0')}.${m[3].padStart(2,'0')}`;
+    if(/^\d{5}$/.test(s)){ // 表計算ソフトの日付の通し番号
+      const d = new Date(Date.UTC(1899,11,30) + Number(s) * 86400000);
+      return `${d.getUTCFullYear()}.${String(d.getUTCMonth()+1).padStart(2,'0')}.${String(d.getUTCDate()).padStart(2,'0')}`;
+    }
+    return s;
+  }
+  const isOk = v => /^(〇|○|◯|o|1|true|yes|はい)$/i.test(String(v ?? '').normalize('NFKC').trim());
+
+  // 検索用：全角半角・大文字小文字・ひらがなカタカナをそろえる
+  const norm = s => String(s ?? '').normalize('NFKC').toLowerCase()
+    .replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60))
+    .replace(/\s+/g, '');
+
+  // 検索語にマーカーをつける（元の文字のまま）
+  function hl(text, q){
+    const t = String(text ?? '');
+    if(!q) return esc(t);
+    const nt = [...t].map(c => norm(c));
+    for(let i = 0; i < nt.length; i++){
+      let acc = '', j = i;
+      while(j < nt.length && acc.length < q.length){ acc += nt[j]; j++; }
+      if(acc === q){
+        const chars = [...t];
+        return esc(chars.slice(0,i).join('')) + '<mark>' + esc(chars.slice(i,j).join('')) + '</mark>' + esc(chars.slice(j).join(''));
+      }
+    }
+    return esc(t);
+  }
+
+  function dupMap(){
+    const m = {};
+    entries.forEach(e => { if(e.pass){ (m[e.pass] = m[e.pass] || []).push(e); } });
+    return m;
+  }
+  // ⚠を出すのは「注意しない」にしていないものだけ
+  const dupOthers = (e, dm) => (!e.pass || e.ok) ? [] : dm[e.pass].filter(x => x.id !== e.id);
+
+  function render(){
+    const raw = $('search').value;
+    const q = norm(raw);
+    $('clearSearch').classList.toggle('hidden', !raw);
+    const dm = dupMap();
+    const dupCount = entries.filter(e => dupOthers(e, dm).length).length;
+
+    // カテゴリのボタン
+    const cats = catCounts();
+    const hasNone = cats.length && entries.some(e => !e.cat);
+    const offCount = entries.filter(e => e.tfa === 'off').length;
+    if(curCat === DUP ? !dupCount : curCat === TFA ? !offCount : (curCat !== null && !(curCat === '' ? hasNone : cats.includes(curCat)))) curCat = null;
+    const showChips = cats.length || offCount;
+    $('chips').classList.toggle('hidden', !showChips);
+    $('chips').innerHTML = !showChips ? '' :
+      `<button class="chip${curCat === null ? ' on' : ''}" data-all="1">すべて</button>` +
+      cats.map(c => `<button class="chip${curCat === c ? ' on' : ''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('') +
+      (hasNone ? `<button class="chip${curCat === '' ? ' on' : ''}" data-cat="">なし</button>` : '') +
+      (offCount ? `<button class="chip tfa-chip${curCat === TFA ? ' on' : ''}" data-tfa="1">🔓2段階</button>` : '');
+
+    const list = entries
+      .filter(e => curCat === null || (curCat === DUP ? dupOthers(e, dm).length > 0 : curCat === TFA ? e.tfa === 'off' : (e.cat || '') === curCat))
+      .filter(e => !q || norm(e.name).includes(q) || norm(e.cat).includes(q) || norm(e.user).includes(q) || norm(e.memo).includes(q))
+      // 「同じパスワード」のときは、同じもの同士がとなりに並ぶように
+      .sort((a,b) => (curCat === DUP && a.pass !== b.pass) ? a.pass.localeCompare(b.pass) : a.name.localeCompare(b.name, 'ja'));
+
+    const label = curCat === null ? '' : curCat === DUP ? '同じパスワード　' : curCat === TFA ? '2段階認証 未設定　' : (curCat === '' ? 'カテゴリなし　' : `${esc(curCat)}　`);
+    $('count').innerHTML = !entries.length ? '' :
+      curCat === DUP
+        ? (q ? `${list.length}件見つかりました` : '') + `<button class="dup-btn on" id="dupBtn" style="margin-left:${q ? 6 : 0}px">⚠ 同じパスワード ${dupCount}件　✕</button>`
+        : (q ? `${label}${list.length}件見つかりました` : (curCat === null ? `全部で${entries.length}件` : `${label}${list.length}件`)) +
+          (dupCount ? `<button class="dup-btn" id="dupBtn">⚠ 同じパスワード ${dupCount}件</button>` : '');
+
+    if(!entries.length){
+      $('list').innerHTML = '<div class="empty">まだ何も入っていません。<br>右上の「＋ 追加」か、<br>メニューの「読み込む」から入れてください。</div>';
+      return;
+    }
+    if(!list.length){ $('list').innerHTML = '<div class="empty">見つかりませんでした</div>'; return; }
+
+    $('list').innerHTML = list.map(e => {
+      const others = dupOthers(e, dm);
+      return `
+      <div class="item" data-id="${e.id}">
+        <div class="item-top">
+          <span class="item-name">${hl(e.name, q)}${e.keep ? '<span class="keep-mark" title="消さない設定">🛡️</span>' : ''}${e.cat ? `<span class="tag">${hl(e.cat, q)}</span>` : ''}${e.tfa === 'on' ? '<span class="tfa on">🔒2段階</span>' : e.tfa === 'off' ? '<span class="tfa off">🔓2段階</span>' : e.tfa === 'na' ? '<span class="tfa na">2段階なし</span>' : ''}</span>
+          <button class="mini" data-act="edit">編集</button>
+        </div>
+        ${e.user ? `<div class="row"><span class="ico">${e.user.includes('@') ? '✉️' : '🆔'}</span><span class="val">${hl(e.user, q)}</span>
+          <button class="mini" data-act="copyUser">コピー</button></div>` : ''}
+        ${e.pass ? `<div class="row"><span class="ico">🔑</span><span class="val mono">${esc(e.pass)}</span>
+          <button class="mini" data-act="copyPass">コピー</button></div>` : ''}
+        ${e.passDate ? `<div class="row"><span class="ico">📅</span><span class="val date">${esc(e.passDate)}〜</span></div>` : ''}
+        ${e.memo ? `<div class="row memo-row"><span class="ico">📝</span><span class="val memo">${hl(e.memo, q)}</span></div>` : ''}
+        ${others.length ? `<div class="dup">⚠ ${others.map(o => esc(o.name)).join('・')} と同じパスワードです</div>` : ''}
+      </div>`;
+    }).join('');
+  }
+  $('search').addEventListener('input', render);
+  // 「⚠ 同じパスワード」を押すと、そのものだけ表示（もう一度押すと元にもどる）
+  $('count').addEventListener('click', e => {
+    if(!e.target.closest('#dupBtn')) return;
+    curCat = curCat === DUP ? null : DUP;
+    render(); window.scrollTo(0, 0);
+  });
+  // カテゴリのボタン：パソコンのマウスホイールで横に動く
+  $('chips').addEventListener('wheel', e => {
+    const c = $('chips');
+    if(c.scrollWidth <= c.clientWidth) return;
+    const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    const before = c.scrollLeft;
+    c.scrollLeft += d;
+    if(c.scrollLeft !== before) e.preventDefault();
+  }, {passive:false});
+  $('chips').addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if(!b) return;
+    curCat = b.dataset.all ? null : b.dataset.tfa ? TFA : b.dataset.cat;
+    render(); window.scrollTo(0, 0);
+  });
+  // よく使う順のカテゴリ一覧
+  function catCounts(){
+    const cnt = {};
+    entries.forEach(e => { if(e.cat) cnt[e.cat] = (cnt[e.cat] || 0) + 1; });
+    return Object.keys(cnt).sort((a,b) => cnt[b] - cnt[a] || a.localeCompare(b, 'ja'));
+  }
+  $('clearSearch').addEventListener('click', () => { $('search').value = ''; render(); $('search').focus(); });
+
+  $('list').addEventListener('click', e => {
+    const b = e.target.closest('[data-act]'); if(!b) return;
+    const ent = entries.find(x => x.id === b.closest('.item').dataset.id);
+    const act = b.dataset.act;
+    if(act === 'copyUser') copy(ent.user, ent.user.includes('@') ? 'メールアドレスをコピーしました' : 'IDをコピーしました');
+    if(act === 'copyPass') copy(ent.pass, 'パスワードをコピーしました');
+    if(act === 'edit') openEdit(ent);
+  });
+
+  async function copy(text, msg){
+    let ok = false;
+    try{ await navigator.clipboard.writeText(text); ok = true; }
+    catch(e){
+      try {
+        const t = document.createElement('textarea'); t.value = text; t.setAttribute('readonly', '');
+        t.style.cssText = 'position:fixed;top:-1000px;opacity:0';
+        document.body.appendChild(t); t.select();
+        ok = document.execCommand('copy'); t.remove();
+      } catch(e2){ ok = false; }
+    }
+    // コピーできたときだけ「コピーしました」
+    if(ok) toast(msg);
+    else toast('コピーできませんでした。文字を長押しして選んでコピーしてください', 4000);
+  }
+
+  // ---------- 追加・編集 ----------
+  // 候補は「@」が入っているもの（メールアドレス）だけ、よく使う順
+  function fillUserList(){
+    const cnt = {};
+    entries.forEach(e => { if(e.user && e.user.includes('@')) cnt[e.user] = (cnt[e.user] || 0) + 1; });
+    const users = Object.keys(cnt).sort((a,b) => cnt[b] - cnt[a] || a.localeCompare(b));
+    $('userList').innerHTML = users.map(u => `<option value="${esc(u)}">`).join('');
+  }
+  function sameAs(pass){
+    if(!pass) return [];
+    return entries.filter(x => x.pass === pass && x.id !== editingId);
+  }
+  function updateDupNote(){
+    const s = $('fOk').checked ? [] : sameAs($('fPass').value.trim());
+    $('dupNote').classList.toggle('hidden', !s.length);
+    if(s.length) $('dupNote').textContent = `⚠ ${s.map(x => x.name).join('・')} と同じパスワードです`;
+  }
+  function openEdit(ent){
+    editingId = ent ? ent.id : null;
+    $('editTitle').textContent = ent ? '編集' : '追加';
+    $('fName').value = ent?.name || ''; $('fUser').value = ent?.user || '';
+    $('fPass').value = ent?.pass || ''; $('fMemo').value = ent?.memo || '';
+    $('fOk').checked = !!ent?.ok; $('fDate').value = ent?.passDate || '';
+    $('fNoSym').checked = false;
+    editTfa = ent?.tfa || ''; drawTfa();
+    $('fCat').value = ent ? (ent.cat || '') : (curCat || '');
+    $('catList').innerHTML = catCounts().map(c => `<option value="${esc(c)}">`).join('');
+    editOrig = { pass: ent?.pass || '', date: ent?.passDate || '' };
+    $('fKeep').checked = !!ent?.keep; drawKeep();
+    fillUserList(); updateDupNote();
+    $('editOverlay').classList.remove('hidden');
+    if(!ent) setTimeout(() => $('fName').focus(), 50);
+  }
+  $('fPass').addEventListener('input', updateDupNote);
+  $('fOk').addEventListener('change', updateDupNote);
+  $('btnToday').addEventListener('click', () => { $('fDate').value = fmtDot(Date.now()); });
+  function drawTfa(){ [...$('fTfa').children].forEach(b => b.classList.toggle('on', b.dataset.v === editTfa)); }
+  $('fTfa').addEventListener('click', e => {
+    const b = e.target.closest('button'); if(!b) return;
+    editTfa = editTfa === b.dataset.v ? '' : b.dataset.v; drawTfa();
+  });
+  $('btnAdd').addEventListener('click', () => openEdit(null));
+  $('btnEditCancel').addEventListener('click', closeAll);
+  $('btnEditSave').addEventListener('click', () => {
+    const name = $('fName').value.trim();
+    if(!name){ toast('アプリ名を入れてください'); return; }
+    const pass = $('fPass').value.trim();
+    let passDate = normDate($('fDate').value);
+    // 編集でパスワードが変わって、日付を手で直していなければ今日にする（追加のときは自動で入れない）
+    if(editingId && pass && pass !== editOrig.pass && passDate === normDate(editOrig.date)) passDate = fmtDot(Date.now());
+    if(!pass) passDate = '';
+    const data = {name, cat:$('fCat').value.trim(), user:$('fUser').value.trim(), pass, memo:$('fMemo').value.trim(),
+      passDate, ok:$('fOk').checked, tfa:editTfa, keep:$('fKeep').checked, updated:Date.now()};
+    // 保存できなかったときは入力画面を閉じない（入れた内容が消えないように）
+    if(!commit(() => {
+      if(editingId){ Object.assign(entries.find(x => x.id === editingId), data); }
+      else { entries.push({id:newId(), ...data}); }
+    })) return;
+    const s = data.ok ? [] : sameAs(data.pass).filter(x => x.id !== editingId);
+    closeAll(); render();
+    toast(s.length ? `保存しました（⚠ ${s.map(x => x.name).join('・')} と同じパスワード）` : '保存しました');
+  });
+  // 「消さない」チェックに合わせて削除ボタンを出し入れ
+  function drawKeep(){
+    const keep = $('fKeep').checked;
+    $('btnDelete').classList.toggle('hidden', !editingId || keep);
+    $('keepNote').classList.toggle('hidden', !editingId || !keep);
+  }
+  $('fKeep').addEventListener('change', drawKeep);
+  $('btnDelete').addEventListener('click', () => {
+    const ent = entries.find(x => x.id === editingId);
+    // 画面のチェックで判断する（チェックを外していれば、保存前でも消せる）
+    if(!ent || $('fKeep').checked) return;
+    if(!confirm(`「${ent.name}」をゴミ箱に移します。\n（メニューの「ゴミ箱」から、いつでも元にもどせます）`)) return;
+    if(!commit(() => {
+      entries = entries.filter(x => x.id !== editingId);
+      trash.unshift({...ent, keep: false, deletedAt: Date.now()});
+    })) return;
+    closeAll(); render(); toast('ゴミ箱に移しました');
+  });
+
+  // ---------- ゴミ箱 ----------
+  function renderTrash(){
+    $('trashEmpty').classList.toggle('hidden', !trash.length);
+    $('trashList').innerHTML = !trash.length
+      ? '<div class="empty" style="margin:20px 0">ゴミ箱は空です</div>'
+      : trash.map(t => `<div class="trash-item" data-id="${esc(t.id)}">
+          <div class="t-name">${esc(t.name)}${t.cat ? `<span class="tag">${esc(t.cat)}</span>` : ''}</div>
+          <div class="t-sub">${esc(t.user || '')}${t.user ? '　' : ''}削除した日：${fmtDot(t.deletedAt)}</div>
+          <div class="t-btns"><button class="restore" data-act="restore">もどす</button><button class="purge" data-act="purge">完全に消す</button></div>
+        </div>`).join('');
+  }
+  function updateTrashInfo(){
+    $('mTrashInfo').textContent = trash.length ? `${trash.length}件入っています。ここから元にもどせます` : '削除したものは、ここから元にもどせます';
+  }
+  $('mTrash').addEventListener('click', () => { closeAll(); renderTrash(); $('trashOverlay').classList.remove('hidden'); });
+  $('trashClose').addEventListener('click', closeAll);
+  $('trashList').addEventListener('click', e => {
+    const b = e.target.closest('[data-act]'); if(!b) return;
+    const id = b.closest('.trash-item').dataset.id;
+    const t = trash.find(x => x.id === id); if(!t) return;
+    if(b.dataset.act === 'restore'){
+      const {deletedAt, ...ent} = t;
+      const ok = commit(() => { entries.push(ent); trash = trash.filter(x => x.id !== id); });
+      renderTrash(); render();
+      if(ok) toast(`「${t.name}」をもどしました`);
+    } else {
+      if(!confirm(`「${t.name}」を完全に消します。\nもう元にもどせません。よろしいですか？`)) return;
+      const ok = commit(() => { trash = trash.filter(x => x.id !== id); });
+      renderTrash();
+      if(ok) toast('完全に消しました');
+    }
+  });
+  $('trashEmpty').addEventListener('click', () => {
+    if(!confirm(`ゴミ箱の${trash.length}件をすべて完全に消します。\nもう元にもどせません。よろしいですか？`)) return;
+    const ok = commit(() => { trash = []; });
+    renderTrash();
+    if(ok) toast('ゴミ箱を空にしました');
+  });
+  $('btnGen').addEventListener('click', () => {
+    if($('fPass').value && !confirm('今のパスワードを、新しく作ったものに置きかえますか？')) return;
+    // 英大文字・小文字・数字（記号ありなら記号も）を必ず1つずつ入れる
+    const sets = ['ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnpqrstuvwxyz', '23456789'];
+    if(!$('fNoSym').checked) sets.push('!#$%&');
+    const all = sets.join('');
+    const rnd = n => crypto.getRandomValues(new Uint32Array(1))[0] % n;
+    const p = sets.map(s => s[rnd(s.length)]);
+    while(p.length < 14) p.push(all[rnd(all.length)]);
+    for(let i = p.length - 1; i > 0; i--){ const j = rnd(i + 1); [p[i], p[j]] = [p[j], p[i]]; }
+    $('fPass').value = p.join('');
+    updateDupNote();
+  });
+
+  // ---------- メニュー ----------
+  function closeAll(){ document.querySelectorAll('.overlay').forEach(o => o.classList.add('hidden')); }
+  $('btnMenu').addEventListener('click', () => { updateTrashInfo(); $('menuOverlay').classList.remove('hidden'); });
+  $('mClose').addEventListener('click', closeAll);
+  // 外側をクリック・タップで閉じる（入力画面だけは閉じない：入力が消えないように）
+  document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click', e => {
+    if(e.target === o && o.id !== 'editOverlay') closeAll();
+  }));
+
+  // 印刷
+  $('mPrint').addEventListener('click', () => {
+    if(!entries.length){ toast('印刷するものがありません'); return; }
+    const list = [...entries].sort((a,b) => a.name.localeCompare(b.name, 'ja'));
+    $('print').innerHTML = `<h1>パスワード帳</h1><p>印刷日：${fmtDate(Date.now())}　／　${list.length}件</p>
+      <table><tr><th style="width:17%">アプリ名</th><th style="width:9%">カテゴリ</th><th style="width:22%">メールアドレス・ID</th><th style="width:18%">パスワード</th><th style="width:10%">変えた日</th><th style="width:7%">2段階</th><th>メモ</th></tr>
+      ${list.map(e => `<tr><td>${esc(e.name)}</td><td>${esc(e.cat)}</td><td>${esc(e.user)}</td><td class="mono">${esc(e.pass)}</td><td>${esc(e.passDate)}</td><td>${{on:'済',off:'未',na:'ー'}[e.tfa] || ''}</td><td>${esc(e.memo).replace(/\n/g,'<br>')}</td></tr>`).join('')}
+      </table>`;
+    closeAll();
+    setTimeout(() => window.print(), 100);
+  });
+
+  // CSV
+  const csvCell = v => { const s = String(v ?? ''); return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
+  function toCsv(rows){
+    return '﻿' + [HEADERS, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
+  }
+  function parseCsv(text){
+    text = text.replace(/^﻿/, '');
+    const rows = []; let row = [], cell = '', inQ = false;
+    for(let i = 0; i < text.length; i++){
+      const c = text[i];
+      if(inQ){
+        if(c === '"'){ if(text[i+1] === '"'){ cell += '"'; i++; } else inQ = false; }
+        else cell += c;
+      } else {
+        if(c === '"') inQ = true;
+        else if(c === ','){ row.push(cell); cell = ''; }
+        else if(c === '\n' || c === '\r'){
+          if(c === '\r' && text[i+1] === '\n') i++;
+          row.push(cell); rows.push(row); row = []; cell = '';
+        }
+        else cell += c;
+      }
+    }
+    if(cell !== '' || row.length){ row.push(cell); rows.push(row); }
+    return rows.filter(r => r.some(c => c.trim() !== ''));
+  }
+  function download(text, name){
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], {type:'text/csv;charset=utf-8'}));
+    a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  }
+  const today = () => { const d = new Date(); return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`; };
+
+  $('mExport').addEventListener('click', () => {
+    if(!entries.length){ toast('書き出すものがありません'); return; }
+    const list = [...entries].sort((a,b) => a.name.localeCompare(b.name, 'ja'));
+    download(toCsv(list.map(e => [e.name, e.cat || '', e.user, e.pass, e.memo, e.passDate || '', e.ok ? '〇' : '', TFA_LABEL[e.tfa] || '', e.keep ? '〇' : ''])), `パスワード帳_${today()}.csv`);
+    closeAll(); toast('CSVで書き出しました');
+  });
+  $('mTemplate').addEventListener('click', () => {
+    download(toCsv([
+      ['（例）メルカリ','通販','sample@gmail.com','abcd1234','この行は消してから使ってください','2026.10.19','','設定済','〇'],
+      ['（例）お試しアプリ','','sample@gmail.com','abcd1234','「同じでも注意しない」は〇を入れる','2026.10.19','〇','機能なし','']
+    ]), 'パスワード帳_ひな形.csv');
+    closeAll(); toast('ひな形を保存しました');
+  });
+
+  $('mImport').addEventListener('click', () => { closeAll(); $('fileInput').click(); });
+  $('fileInput').addEventListener('change', async e => {
+    const file = e.target.files[0]; e.target.value = '';
+    if(!file) return;
+    let text = await file.text();
+    if(text.includes('�')){
+      try { text = new TextDecoder('shift_jis').decode(await file.arrayBuffer()); } catch(err){}
+    }
+    let rows = parseCsv(text);
+    // 見出し行から列の場所を決める（昔の形のCSVも読める）
+    let col = {name:0, cat:1, user:2, pass:3, memo:4, date:5, ok:6, tfa:7, keep:8};
+    if(rows.length && norm(rows[0][0]).includes(norm('アプリ'))){
+      const h = rows[0].map(x => norm(x));
+      const find = w => h.findIndex(x => x.includes(norm(w)));
+      col = {name:find('アプリ'), cat:find('カテゴリ'), user:find('メール'), pass:h.findIndex(x => x === norm('パスワード')),
+        memo:find('メモ'), date:find('変えた日'), ok:find('注意しない'), tfa:find('2段階'), keep:find('消さない')};
+      rows = rows.slice(1);
+    }
+    const cell = (r, i) => i >= 0 ? String(r[i] ?? '').trim() : '';
+    rows = rows.filter(r => cell(r, col.name) && !cell(r, col.name).startsWith('（例）'));
+    if(!rows.length){ toast('読み込めるデータがありませんでした'); return; }
+    pendingRows = rows.map(r => {
+      let name = cell(r, col.name), cat = cell(r, col.cat);
+      if(!cat) [name, cat] = splitCat(name);
+      return { id:newId(), name, cat, user:cell(r, col.user), pass:cell(r, col.pass), memo:cell(r, col.memo),
+        passDate:normDate(cell(r, col.date)), ok:isOk(cell(r, col.ok)), tfa:parseTfa(cell(r, col.tfa)), keep:isOk(cell(r, col.keep)), updated:Date.now() };
+    });
+    $('importInfo').textContent = `ファイルに${pendingRows.length}件入っていました。どうやって読み込みますか？（今は${entries.length}件）`;
+    $('importOverlay').classList.remove('hidden');
+  });
+  $('impCancel').addEventListener('click', () => { pendingRows = null; closeAll(); });
+  $('impAdd').addEventListener('click', () => {
+    const key = e => [e.name, e.user, e.pass].join('\u0001');
+    const have = new Set(entries.map(key));
+    const add = [];
+    pendingRows.forEach(e => { const k = key(e); if(!have.has(k)){ have.add(k); add.push(e); } });
+    const skip = pendingRows.length - add.length;
+    const ok = commit(() => { entries.push(...add); });
+    pendingRows = null; closeAll(); render();
+    if(!ok) return;
+    let msg;
+    if(!add.length) msg = `${skip}件とも同じものが入っていたので、足しませんでした`;
+    else if(skip) msg = `${add.length}件を足しました（${skip}件は同じだったので入れませんでした）`;
+    else msg = `${add.length}件を足しました`;
+    toast(msg, skip ? 4000 : 2200);
+  });
+  $('impReplace').addEventListener('click', () => {
+    if(!confirm(`今の${entries.length}件を消して、ファイルの${pendingRows.length}件に入れかえます。よろしいですか？`)) return;
+    const rows = pendingRows;
+    const ok = commit(() => { entries = rows; });
+    pendingRows = null; closeAll(); render();
+    if(ok) toast('入れかえました');
+  });
+
+  $('mPin').addEventListener('click', () => {
+    closeAll(); showLock('change1', '新しい暗証番号', '新しく使う4桁の番号を入力してください');
+  });
+
+  // ---------- トースト ----------
+  let tt;
+  function toast(m, ms = 2200){ $('toast').textContent = m; $('toast').classList.add('show');
+    clearTimeout(tt); tt = setTimeout(() => $('toast').classList.remove('show'), ms); }
+
+  // ---------- はじめ ----------
+  load();
+  let hasPin = false, isOpen = false;
+  try { hasPin = !!localStorage.getItem(PINKEY); } catch(e){}
+  try { isOpen = sessionStorage.getItem(UNLOCK) === '1'; } catch(e){}
+  if(!hasPin) showLock('setup1', '暗証番号を決める', 'アプリを開くときの4桁の番号です');
+  else if(isOpen) openApp();
+  else showLock('unlock', '暗証番号を入力');
+})();
+</script>
+</body>
+</html>
