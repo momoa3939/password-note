@@ -3,7 +3,8 @@
 // （データは端末の中だけ。ここでは画面のファイルだけを保存します）
 const CACHE = 'password-note-v1';
 const FILES = ['./', './index.html', './manifest.json',
-  './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon-48.png'];
+  './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon-48.png',
+  './icons/icon-maskable-192.png', './icons/icon-maskable-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
