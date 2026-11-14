@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#faf7f2">
 <title>パスワード帳</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/favicon-48.png" sizes="48x48">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <style>
   :root{
     --bg:#faf7f2; --card:#ffffff; --text:#3d3a35; --sub:#8a847a;
@@ -895,6 +898,8 @@
     clearTimeout(tt); tt = setTimeout(() => $('toast').classList.remove('show'), ms); }
 
   // ---------- はじめ ----------
+  // アプリとして使えるように（ネットがなくても開ける）
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   load();
   let hasPin = false, isOpen = false;
   try { hasPin = !!localStorage.getItem(PINKEY); } catch(e){}
