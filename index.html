@@ -84,6 +84,22 @@
   .seg{display:flex;gap:6px}
   .seg button{flex:1;padding:9px 0;border-radius:10px;border:1px solid var(--line);background:var(--card);font-size:14px}
   .seg button.on{background:var(--accent);border-color:var(--accent);font-weight:bold}
+  .grp{font-size:12px;font-weight:bold;color:var(--warn);margin:4px 0 8px;padding-bottom:3px;border-bottom:1px solid var(--line)}
+  .seg-sm button{font-size:13px;padding:9px 0}
+  .add-link{font-size:13px;color:var(--warn);margin-top:6px;padding:2px 0}
+  .way-box{margin-top:8px;padding:10px;border-radius:10px;background:var(--soft)}
+  .ways{display:flex;gap:6px;flex-wrap:wrap}
+  .ways button{padding:6px 12px;border-radius:16px;border:1px solid var(--line);background:var(--card);font-size:13px}
+  .ways button.on{background:var(--accent);border-color:var(--accent);font-weight:bold}
+  .lbl{color:var(--sub);font-size:12px}
+  .fold-btn{display:flex;justify-content:space-between;align-items:center;width:100%;padding:10px 12px;
+    border:1px solid var(--line);border-radius:10px;background:var(--card);font-size:14px;text-align:left}
+  .fold-info{font-size:12px;color:var(--sub)}
+  .field .mono{font-family:"Consolas","Menlo",monospace;letter-spacing:.5px}
+  #boxCodes,#boxSecret{margin-top:6px}
+  .fold-row{cursor:pointer}
+  .fold-row .op{font-size:12px;color:var(--warn);flex-shrink:0}
+  .fold-body{white-space:pre-wrap;font-size:13px;line-height:1.7;background:var(--bg);border-radius:8px;padding:6px 10px;margin:0 0 6px 28px;word-break:break-all}
   .tag{display:inline-block;font-size:11px;font-weight:normal;padding:2px 8px;border-radius:10px;background:var(--soft);
     color:#6b655c;margin-left:8px;vertical-align:2px;word-break:keep-all}
   .count b{color:var(--warn)}
@@ -156,10 +172,13 @@
     #print{display:block;padding:8mm;font-size:10.5pt;color:#000}
     #print h1{font-size:14pt;margin-bottom:3mm}
     #print p{font-size:9pt;margin-bottom:4mm}
-    #print table{width:100%;border-collapse:collapse}
-    #print th,#print td{border:1px solid #999;padding:2mm 2.5mm;text-align:left;vertical-align:top;word-break:break-all}
-    #print th{background:#eee;font-size:9pt}
-    #print tr{page-break-inside:avoid}
+    #print .pcat{font-size:11pt;font-weight:bold;margin:5mm 0 2mm;padding:1mm 2.5mm;background:#eee;border-left:1mm solid #888;break-after:avoid;page-break-after:avoid}
+    #print .pcard{box-sizing:border-box;display:inline-block;width:calc(50% - 3mm);margin:0 1.5mm 3mm 0;vertical-align:top;border:1px solid #999;border-radius:1.5mm;
+      padding:2mm 3mm;font-size:9.5pt;line-height:1.5;break-inside:avoid;page-break-inside:avoid}
+    #print .pname{font-size:11pt;font-weight:bold;border-bottom:1px solid #ccc;padding-bottom:1mm;margin-bottom:1mm;word-break:break-all}
+    #print .pr{display:flex;gap:2mm}
+    #print .pk{width:19mm;flex-shrink:0;color:#555}
+    #print .pv{flex:1;min-width:0;word-break:break-all;white-space:pre-wrap}
     #print .mono{font-family:"Consolas","Menlo",monospace}
   }
 </style>
@@ -216,11 +235,24 @@
       <datalist id="catList"></datalist>
       <div style="font-size:12px;color:var(--sub);margin-top:4px">前に入れたものから選べます。新しく打ってもOK</div>
     </div>
-    <div class="field"><label>メールアドレス・ID</label>
+    <div class="grp">ログイン</div>
+    <div class="field"><label>ログイン方法</label>
+      <div class="seg seg-sm" id="fLogin">
+        <button type="button" data-v="id">ID・パスワード</button>
+        <button type="button" data-v="google">Googleで</button>
+        <button type="button" data-v="passkey">パスキー</button>
+        <button type="button" data-v="other">その他</button>
+      </div>
+    </div>
+    <div class="field"><label id="userLabel">メールアドレス・ID</label>
       <input id="fUser" list="userList" autocomplete="off" autocapitalize="off" placeholder="前に入れたものから選べます">
       <datalist id="userList"></datalist>
+      <button type="button" class="add-link hidden" id="btnAddReg">＋ 登録メールアドレスを入れる</button>
     </div>
-    <div class="field"><label>パスワード</label>
+    <div class="field hidden" id="regField"><label>登録メールアドレス</label>
+      <input id="fReg" list="userList" autocomplete="off" autocapitalize="off" placeholder="サイトに登録しているメールアドレス">
+    </div>
+    <div class="field" id="passField"><label>パスワード</label>
       <div class="pass-wrap">
         <input id="fPass" autocomplete="off" autocapitalize="off" class="mono">
         <button class="mini" id="btnGen">自動作成</button>
@@ -235,8 +267,31 @@
         <button type="button" data-v="off">未設定</button>
         <button type="button" data-v="na">機能なし</button>
       </div>
+      <div class="way-box hidden" id="wayBox">
+        <div style="font-size:12px;color:var(--sub);margin-bottom:6px">方法（いくつでも選べます）</div>
+        <div class="ways" id="fWays">
+          <button type="button" data-v="mail">メール</button>
+          <button type="button" data-v="sms">SMS</button>
+          <button type="button" data-v="app">認証アプリ</button>
+          <button type="button" data-v="other">その他</button>
+        </div>
+      </div>
       <div style="font-size:12px;color:var(--sub);margin-top:4px">選んだボタンをもう一度押すと、選んでいない状態にもどせます</div>
     </div>
+    <div class="grp">もしものとき（ログインできなくなったとき用）</div>
+    <div class="field">
+      <button type="button" class="fold-btn" id="foldCodes"><span>予備コード</span><span class="fold-info" id="infoCodes"></span></button>
+      <div class="hidden" id="boxCodes">
+        <textarea id="fCodes" class="mono" placeholder="サイトに出たコードを、まとめて貼りつけ"></textarea>
+        <div style="font-size:12px;color:var(--sub);margin-top:4px">使ったコードは消してください</div>
+      </div>
+      <button type="button" class="fold-btn" id="foldSecret" style="margin-top:6px"><span>秘密の質問</span><span class="fold-info" id="infoSecret"></span></button>
+      <div class="hidden" id="boxSecret">
+        <textarea id="fSecret" placeholder="例：最初のペット → ○○"></textarea>
+        <div style="font-size:12px;color:var(--sub);margin-top:4px">「質問 → 答え」の形で。いくつでも書けます</div>
+      </div>
+    </div>
+    <div class="grp">そのほか</div>
     <div class="field"><label>パスワードを変えた日</label>
       <div class="pass-wrap">
         <input id="fDate" placeholder="例：2026.10.19" autocomplete="off" inputmode="decimal">
@@ -261,7 +316,7 @@
 <div class="overlay hidden" id="menuOverlay">
   <div class="sheet">
     <h2>メニュー</h2>
-    <button class="menu-item" id="mPrint">🖨 紙に印刷する<small>アプリ名順の一覧表で印刷します</small></button>
+    <button class="menu-item" id="mPrint">🖨 紙に印刷する<small>カテゴリごとに、1件ずつのカードで印刷します</small></button>
     <div class="menu-label">WPSなどの表計算ソフトとやりとり（CSV）</div>
     <button class="menu-item" id="mExport">💾 書き出す<small>今のデータをCSVファイルで保存します（バックアップ・機種変更用）</small></button>
     <button class="menu-item" id="mImport">📂 読み込む<small>CSVファイルからデータを入れます</small></button>
@@ -273,6 +328,8 @@
       <div>・「（例）」の行は消しても、残しても大丈夫（自動で読み飛ばします）</div>
       <div>・カテゴリは2列目に（空でもOK）</div>
       <div>・2段階認証は「設定済」「未設定」「機能なし」のどれか（空でもOK）</div>
+      <div>・2段階認証の方法は「メール」「SMS」「認証アプリ」「その他」を「・」でつなぐ（空でもOK）</div>
+      <div>・ログイン方法は「ID・パスワード」「Googleでログイン」「パスキー」「その他」のどれか（空でもOK）</div>
       <div>・「同じでも注意しない」「消さない」にしたいものは、その列に「〇」</div>
       <div>・「変えた日」は 2026.10.19 や 2026/10/19 のどちらでもOK</div>
       <div>・読み込みが終わったCSVは、置きっぱなしにしないでね</div>
@@ -318,7 +375,35 @@
   const TRASH = 'pwnote2-trash';
   const KEEPMIG = 'pwnote2-keepmig';
   let trash = [];
-  const HEADERS = ['アプリ名','カテゴリ','メールアドレス・ID','パスワード','メモ','パスワードを変えた日','同じでも注意しない','2段階認証','消さない'];
+  const HEADERS = ['アプリ名','カテゴリ','メールアドレス・ID','パスワード','メモ','パスワードを変えた日','同じでも注意しない','2段階認証','消さない','ログイン方法','登録メールアドレス','2段階認証の方法','予備コード','秘密の質問'];
+  // 予備コードの数（スペース・改行で区切って数える）／秘密の質問の数（行の数）
+  const codeCount = s => String(s ?? '').split(/[\s　]+/).filter(Boolean).length;
+  const lineCount = s => String(s ?? '').split(/\n/).filter(x => x.trim()).length;
+  const openFolds = new Set();   // 一覧で開いている「予備コード」「秘密の質問」
+  // ログイン方法（''＝選んでいない＝ID・パスワードとして扱う）
+  const LOGIN_LABEL = {id:'ID・パスワード', google:'Googleでログイン', passkey:'パスキー', other:'その他'};
+  function parseLogin(v){
+    const t = String(v ?? '').normalize('NFKC').trim();
+    if(!t) return '';
+    if(/google/i.test(t)) return 'google';
+    if(/パスキー|passkey/i.test(t)) return 'passkey';
+    if(/^(ID|ID・パスワード|パスワード)$/i.test(t)) return 'id';
+    return 'other';
+  }
+  // 2段階認証の方法（いくつでも）
+  const WAY_ORDER = ['mail','sms','app','other'];
+  const WAY_LABEL = {mail:'メール', sms:'SMS', app:'認証アプリ', other:'その他'};
+  function parseWays(v){
+    const t = String(v ?? '').normalize('NFKC');
+    const w = [];
+    if(/メール|mail/i.test(t)) w.push('mail');
+    if(/SMS|ショートメッセージ/i.test(t)) w.push('sms');
+    if(/アプリ|app/i.test(t)) w.push('app');
+    if(/その他|ほか/.test(t)) w.push('other');
+    return w;
+  }
+  const waysText = ws => WAY_ORDER.filter(w => (ws || []).includes(w)).map(w => WAY_LABEL[w]).join('・');
+  let editLogin = '', editWays = [], regOpen = false;
   let curCat = null;
   const DUP = '\u0002dup';  // 「⚠ 同じパスワード」で絞りこみ中のしるし
   const TFA = '\u0001tfa';  // 「🔓2段階」で絞りこみ中のしるし
@@ -358,6 +443,11 @@
       if(!('cat' in e)){ const [n, c] = splitCat(e.name); e.name = n; e.cat = c; changed = true; }
       if(!('tfa' in e)){ e.tfa = ''; changed = true; }
       if(!('keep' in e)){ e.keep = false; changed = true; }
+      if(!('login' in e)){ e.login = ''; changed = true; }
+      if(!('regMail' in e)){ e.regMail = ''; changed = true; }
+      if(!Array.isArray(e.tfaWays)){ e.tfaWays = []; changed = true; }
+      if(!('codes' in e)){ e.codes = ''; changed = true; }
+      if(!('secret' in e)){ e.secret = ''; changed = true; }
     });
     // 最初の1回だけ：カテゴリ「重要」のものを「消さない」に
     let mig = null; try { mig = localStorage.getItem(KEEPMIG); } catch(e){}
@@ -515,11 +605,13 @@
 
   function dupMap(){
     const m = {};
-    entries.forEach(e => { if(e.pass){ (m[e.pass] = m[e.pass] || []).push(e); } });
+    entries.forEach(e => { if(usesPass(e)){ (m[e.pass] = m[e.pass] || []).push(e); } });
     return m;
   }
+  // 「Googleでログイン」のものは、パスワードを比べない
+  const usesPass = e => !!e.pass && e.login !== 'google';
   // ⚠を出すのは「注意しない」にしていないものだけ
-  const dupOthers = (e, dm) => (!e.pass || e.ok) ? [] : dm[e.pass].filter(x => x.id !== e.id);
+  const dupOthers = (e, dm) => (!usesPass(e) || e.ok) ? [] : dm[e.pass].filter(x => x.id !== e.id);
 
   function render(){
     const raw = $('search').value;
@@ -543,7 +635,7 @@
 
     const list = entries
       .filter(e => curCat === null || (curCat === DUP ? dupOthers(e, dm).length > 0 : curCat === TFA ? e.tfa === 'off' : (e.cat || '') === curCat))
-      .filter(e => !q || norm(e.name).includes(q) || norm(e.cat).includes(q) || norm(e.user).includes(q) || norm(e.memo).includes(q))
+      .filter(e => !q || norm(e.name).includes(q) || norm(e.cat).includes(q) || norm(e.user).includes(q) || norm(e.regMail).includes(q) || norm(e.memo).includes(q))
       // 「同じパスワード」のときは、同じもの同士がとなりに並ぶように
       .sort((a,b) => (curCat === DUP && a.pass !== b.pass) ? a.pass.localeCompare(b.pass) : a.name.localeCompare(b.name, 'ja'));
 
@@ -565,13 +657,22 @@
       return `
       <div class="item" data-id="${e.id}">
         <div class="item-top">
-          <span class="item-name">${hl(e.name, q)}${e.keep ? '<span class="keep-mark" title="消さない設定">🛡️</span>' : ''}${e.cat ? `<span class="tag">${hl(e.cat, q)}</span>` : ''}${e.tfa === 'on' ? '<span class="tfa on">🔒2段階</span>' : e.tfa === 'off' ? '<span class="tfa off">🔓2段階</span>' : e.tfa === 'na' ? '<span class="tfa na">2段階なし</span>' : ''}</span>
+          <span class="item-name">${hl(e.name, q)}${e.keep ? '<span class="keep-mark" title="消さない設定">🛡️</span>' : ''}${e.cat ? `<span class="tag">${hl(e.cat, q)}</span>` : ''}${e.tfa === 'on' ? `<span class="tfa on">🔒2段階${waysText(e.tfaWays) ? '：' + waysText(e.tfaWays) : ''}</span>` : e.tfa === 'off' ? '<span class="tfa off">🔓2段階</span>' : e.tfa === 'na' ? '<span class="tfa na">2段階なし</span>' : ''}</span>
           <button class="mini" data-act="edit">編集</button>
         </div>
+        ${e.login === 'google' ? `<div class="row"><span class="ico">🔐</span><span class="val">Googleでログイン</span></div>`
+          : e.login === 'passkey' ? `<div class="row"><span class="ico">🔐</span><span class="val">パスキーでログイン</span></div>`
+          : e.login === 'other' ? `<div class="row"><span class="ico">🔐</span><span class="val">ログイン方法：その他</span></div>` : ''}
         ${e.user ? `<div class="row"><span class="ico">${e.user.includes('@') ? '✉️' : '🆔'}</span><span class="val">${hl(e.user, q)}</span>
           <button class="mini" data-act="copyUser">コピー</button></div>` : ''}
-        ${e.pass ? `<div class="row"><span class="ico">🔑</span><span class="val mono">${esc(e.pass)}</span>
+        ${e.regMail ? `<div class="row"><span class="ico">✉️</span><span class="val"><span class="lbl">登録メール：</span>${hl(e.regMail, q)}</span>
+          <button class="mini" data-act="copyReg">コピー</button></div>` : ''}
+        ${usesPass(e) ? `<div class="row"><span class="ico">🔑</span><span class="val mono">${esc(e.pass)}</span>
           <button class="mini" data-act="copyPass">コピー</button></div>` : ''}
+        ${e.codes ? `<div class="row fold-row" data-act="fold" data-k="codes"><span class="ico">🗝️</span><span class="val">予備コード（${codeCount(e.codes)}個）</span><span class="op">${openFolds.has(e.id + ':codes') ? '▲ 閉じる' : '▼ 見る'}</span></div>
+          ${openFolds.has(e.id + ':codes') ? `<div class="fold-body mono">${esc(e.codes)}</div>` : ''}` : ''}
+        ${e.secret ? `<div class="row fold-row" data-act="fold" data-k="secret"><span class="ico">❓</span><span class="val">秘密の質問（${lineCount(e.secret)}つ）</span><span class="op">${openFolds.has(e.id + ':secret') ? '▲ 閉じる' : '▼ 見る'}</span></div>
+          ${openFolds.has(e.id + ':secret') ? `<div class="fold-body">${esc(e.secret)}</div>` : ''}` : ''}
         ${e.passDate ? `<div class="row"><span class="ico">📅</span><span class="val date">${esc(e.passDate)}〜</span></div>` : ''}
         ${e.memo ? `<div class="row memo-row"><span class="ico">📝</span><span class="val memo">${hl(e.memo, q)}</span></div>` : ''}
         ${others.length ? `<div class="dup">⚠ ${others.map(o => esc(o.name)).join('・')} と同じパスワードです</div>` : ''}
@@ -612,6 +713,12 @@
     const ent = entries.find(x => x.id === b.closest('.item').dataset.id);
     const act = b.dataset.act;
     if(act === 'copyUser') copy(ent.user, ent.user.includes('@') ? 'メールアドレスをコピーしました' : 'IDをコピーしました');
+    if(act === 'copyReg') copy(ent.regMail, '登録メールアドレスをコピーしました');
+    if(act === 'fold'){
+      const k = ent.id + ':' + b.dataset.k;
+      openFolds.has(k) ? openFolds.delete(k) : openFolds.add(k);
+      render();
+    }
     if(act === 'copyPass') copy(ent.pass, 'パスワードをコピーしました');
     if(act === 'edit') openEdit(ent);
   });
@@ -656,7 +763,10 @@
     $('fPass').value = ent?.pass || ''; $('fMemo').value = ent?.memo || '';
     $('fOk').checked = !!ent?.ok; $('fDate').value = ent?.passDate || '';
     $('fNoSym').checked = false;
-    editTfa = ent?.tfa || ''; drawTfa();
+    editTfa = ent?.tfa || ''; editWays = [...(ent?.tfaWays || [])]; drawTfa();
+    editLogin = ent?.login || ''; $('fReg').value = ent?.regMail || ''; regOpen = false; drawLogin();
+    $('fCodes').value = ent?.codes || ''; $('fSecret').value = ent?.secret || '';
+    $('boxCodes').classList.add('hidden'); $('boxSecret').classList.add('hidden'); drawFolds();
     $('fCat').value = ent ? (ent.cat || '') : (curCat || '');
     $('catList').innerHTML = catCounts().map(c => `<option value="${esc(c)}">`).join('');
     editOrig = { pass: ent?.pass || '', date: ent?.passDate || '' };
@@ -668,11 +778,52 @@
   $('fPass').addEventListener('input', updateDupNote);
   $('fOk').addEventListener('change', updateDupNote);
   $('btnToday').addEventListener('click', () => { $('fDate').value = fmtDot(Date.now()); });
-  function drawTfa(){ [...$('fTfa').children].forEach(b => b.classList.toggle('on', b.dataset.v === editTfa)); }
+  function drawTfa(){
+    [...$('fTfa').children].forEach(b => b.classList.toggle('on', b.dataset.v === editTfa));
+    // 「設定済」のときだけ、方法を選べる
+    $('wayBox').classList.toggle('hidden', editTfa !== 'on');
+    [...$('fWays').children].forEach(b => b.classList.toggle('on', editWays.includes(b.dataset.v)));
+  }
   $('fTfa').addEventListener('click', e => {
     const b = e.target.closest('button'); if(!b) return;
     editTfa = editTfa === b.dataset.v ? '' : b.dataset.v; drawTfa();
   });
+  $('fWays').addEventListener('click', e => {
+    const b = e.target.closest('button'); if(!b) return;
+    const v = b.dataset.v;
+    editWays = editWays.includes(v) ? editWays.filter(x => x !== v) : [...editWays, v];
+    drawTfa();
+  });
+  // ログイン方法に合わせて、欄を出し入れ
+  function drawLogin(){
+    [...$('fLogin').children].forEach(b => b.classList.toggle('on', b.dataset.v === editLogin));
+    const g = editLogin === 'google';
+    $('userLabel').textContent = g ? 'Googleアカウント' : 'メールアドレス・ID';
+    $('passField').classList.toggle('hidden', g);
+    // 登録メール：入っている・「＋」を押した・IDに@がないときだけ出す
+    const user = $('fUser').value.trim();
+    const showReg = regOpen || !!$('fReg').value.trim() || (!g && !!user && !user.includes('@'));
+    $('regField').classList.toggle('hidden', !showReg);
+    $('btnAddReg').classList.toggle('hidden', showReg);
+  }
+  $('fLogin').addEventListener('click', e => {
+    const b = e.target.closest('button'); if(!b) return;
+    editLogin = editLogin === b.dataset.v ? '' : b.dataset.v; drawLogin();
+  });
+  $('fUser').addEventListener('input', drawLogin);
+  // 予備コード・秘密の質問：たたむ／開く
+  function drawFolds(){
+    const c = codeCount($('fCodes').value), s = lineCount($('fSecret').value);
+    const oc = !$('boxCodes').classList.contains('hidden'), os = !$('boxSecret').classList.contains('hidden');
+    // 入っていないときは「なし」を出さず、「＋ 入れる」（開いているときは「▲ たたむ」）だけ
+    $('infoCodes').textContent = (c ? `${c}個　` : '') + (oc ? '▲ たたむ' : c ? '▼ 開く' : '＋ 入れる');
+    $('infoSecret').textContent = (s ? `${s}つ　` : '') + (os ? '▲ たたむ' : s ? '▼ 開く' : '＋ 入れる');
+  }
+  $('foldCodes').addEventListener('click', () => { $('boxCodes').classList.toggle('hidden'); drawFolds(); });
+  $('foldSecret').addEventListener('click', () => { $('boxSecret').classList.toggle('hidden'); drawFolds(); });
+  $('fCodes').addEventListener('input', drawFolds);
+  $('fSecret').addEventListener('input', drawFolds);
+  $('btnAddReg').addEventListener('click', () => { regOpen = true; drawLogin(); $('fReg').focus(); });
   $('btnAdd').addEventListener('click', () => openEdit(null));
   $('btnEditCancel').addEventListener('click', closeAll);
   $('btnEditSave').addEventListener('click', () => {
@@ -684,13 +835,17 @@
     if(editingId && pass && pass !== editOrig.pass && passDate === normDate(editOrig.date)) passDate = fmtDot(Date.now());
     if(!pass) passDate = '';
     const data = {name, cat:$('fCat').value.trim(), user:$('fUser').value.trim(), pass, memo:$('fMemo').value.trim(),
-      passDate, ok:$('fOk').checked, tfa:editTfa, keep:$('fKeep').checked, updated:Date.now()};
+      passDate, ok:$('fOk').checked, tfa:editTfa, keep:$('fKeep').checked,
+      login:editLogin, regMail:$('fReg').value.trim(),
+      codes:$('fCodes').value.trim(), secret:$('fSecret').value.trim(), tfaWays: editTfa === 'on' ? WAY_ORDER.filter(w => editWays.includes(w)) : [],
+      updated:Date.now()};
+    // 同じパスワードのものは、一覧に入れる前に調べる（追加したもの自身を「同じ」と数えないため）
+    const s = (data.ok || data.login === 'google') ? [] : sameAs(data.pass).filter(x => x.login !== 'google');
     // 保存できなかったときは入力画面を閉じない（入れた内容が消えないように）
     if(!commit(() => {
       if(editingId){ Object.assign(entries.find(x => x.id === editingId), data); }
       else { entries.push({id:newId(), ...data}); }
     })) return;
-    const s = data.ok ? [] : sameAs(data.pass).filter(x => x.id !== editingId);
     closeAll(); render();
     toast(s.length ? `保存しました（⚠ ${s.map(x => x.name).join('・')} と同じパスワード）` : '保存しました');
   });
@@ -777,11 +932,25 @@
   // 印刷
   $('mPrint').addEventListener('click', () => {
     if(!entries.length){ toast('印刷するものがありません'); return; }
-    const list = [...entries].sort((a,b) => a.name.localeCompare(b.name, 'ja'));
-    $('print').innerHTML = `<h1>パスワード帳</h1><p>印刷日：${fmtDate(Date.now())}　／　${list.length}件</p>
-      <table><tr><th style="width:17%">アプリ名</th><th style="width:9%">カテゴリ</th><th style="width:22%">メールアドレス・ID</th><th style="width:18%">パスワード</th><th style="width:10%">変えた日</th><th style="width:7%">2段階</th><th>メモ</th></tr>
-      ${list.map(e => `<tr><td>${esc(e.name)}</td><td>${esc(e.cat)}</td><td>${esc(e.user)}</td><td class="mono">${esc(e.pass)}</td><td>${esc(e.passDate)}</td><td>${{on:'済',off:'未',na:'ー'}[e.tfa] || ''}</td><td>${esc(e.memo).replace(/\n/g,'<br>')}</td></tr>`).join('')}
-      </table>`;
+    // カテゴリの順番：お金・メールを先に、あとは件数の多い順、カテゴリなしは最後
+    const first = ['お金', 'メール'];
+    const cats = catCounts();
+    const order = [...first.filter(c => cats.includes(c)), ...cats.filter(c => !first.includes(c))];
+    if(entries.some(e => !e.cat)) order.push('');
+    const pr = (k, v, mono) => v ? `<div class="pr"><span class="pk">${k}</span><span class="pv${mono ? ' mono' : ''}">${esc(v)}</span></div>` : '';
+    const card = e => {
+      const userKey = e.login === 'google' ? 'Google' : (e.user || '').includes('@') ? 'メール' : 'ID';
+      const tfa = TFA_LABEL[e.tfa] ? TFA_LABEL[e.tfa] + (e.tfa === 'on' && waysText(e.tfaWays) ? `（${waysText(e.tfaWays)}）` : '') : '';
+      return `<div class="pcard"><div class="pname">${esc(e.name)}${e.keep ? '　🛡' : ''}</div>
+        ${pr('ログイン', e.login && e.login !== 'id' ? LOGIN_LABEL[e.login] : '')}${pr(userKey, e.user)}${pr('登録メール', e.regMail)}
+        ${usesPass(e) ? pr('パスワード', e.pass, true) : ''}${pr('2段階認証', tfa)}${pr('変えた日', e.passDate)}
+        ${pr('予備コード', e.codes, true)}${pr('秘密の質問', e.secret)}${pr('メモ', e.memo)}</div>`;
+    };
+    $('print').innerHTML = `<h1>パスワード帳</h1><p>印刷日：${fmtDate(Date.now())}　／　${entries.length}件</p>` +
+      order.map(c => {
+        const list = entries.filter(e => (e.cat || '') === c).sort((a,b) => a.name.localeCompare(b.name, 'ja', {numeric:true}));
+        return `<div class="pcat">${c ? esc(c) : 'カテゴリなし'}（${list.length}件）</div>` + list.map(card).join('');
+      }).join('');
     closeAll();
     setTimeout(() => window.print(), 100);
   });
@@ -823,13 +992,16 @@
   $('mExport').addEventListener('click', () => {
     if(!entries.length){ toast('書き出すものがありません'); return; }
     const list = [...entries].sort((a,b) => a.name.localeCompare(b.name, 'ja'));
-    download(toCsv(list.map(e => [e.name, e.cat || '', e.user, e.pass, e.memo, e.passDate || '', e.ok ? '〇' : '', TFA_LABEL[e.tfa] || '', e.keep ? '〇' : ''])), `パスワード帳_${today()}.csv`);
+    download(toCsv(list.map(e => [e.name, e.cat || '', e.user, e.pass, e.memo, e.passDate || '', e.ok ? '〇' : '', TFA_LABEL[e.tfa] || '', e.keep ? '〇' : '',
+      LOGIN_LABEL[e.login] || '', e.regMail || '', e.tfa === 'on' ? waysText(e.tfaWays) : '', e.codes || '', e.secret || ''])), `パスワード帳_${today()}.csv`);
     closeAll(); toast('CSVで書き出しました');
   });
   $('mTemplate').addEventListener('click', () => {
     download(toCsv([
-      ['（例）メルカリ','通販','sample@gmail.com','abcd1234','この行は消してから使ってください','2026.10.19','','設定済','〇'],
-      ['（例）お試しアプリ','','sample@gmail.com','abcd1234','「同じでも注意しない」は〇を入れる','2026.10.19','〇','機能なし','']
+      ['（例）メルカリ','通販','sample@gmail.com','abcd1234','この行は消してから使ってください','2026.10.19','','設定済','〇','ID・パスワード','','SMS','',''],
+      ['（例）お試しアプリ','','sample@gmail.com','abcd1234','「同じでも注意しない」は〇を入れる','2026.10.19','〇','機能なし','','','','','',''],
+      ['（例）生地屋さん','生地','momiji1234','abcd1234','IDでログインするときは「登録メールアドレス」も入れる','','','機能なし','','ID・パスワード','sample@gmail.com','','','最初のペット → ○○'],
+      ['（例）GitHub','アプリ作り','sample@gmail.com','','2段階認証の方法は「メール・SMS・認証アプリ・その他」を「・」でつなぐ','','','設定済','〇','Googleでログイン','','認証アプリ','ab12c-de34f\ngh56i-jk78l','']
     ]), 'パスワード帳_ひな形.csv');
     closeAll(); toast('ひな形を保存しました');
   });
@@ -844,12 +1016,14 @@
     }
     let rows = parseCsv(text);
     // 見出し行から列の場所を決める（昔の形のCSVも読める）
-    let col = {name:0, cat:1, user:2, pass:3, memo:4, date:5, ok:6, tfa:7, keep:8};
+    let col = {name:0, cat:1, user:2, pass:3, memo:4, date:5, ok:6, tfa:7, keep:8, login:9, reg:10, ways:11, codes:12, secret:13};
     if(rows.length && norm(rows[0][0]).includes(norm('アプリ'))){
       const h = rows[0].map(x => norm(x));
-      const find = w => h.findIndex(x => x.includes(norm(w)));
-      col = {name:find('アプリ'), cat:find('カテゴリ'), user:find('メール'), pass:h.findIndex(x => x === norm('パスワード')),
-        memo:find('メモ'), date:find('変えた日'), ok:find('注意しない'), tfa:find('2段階'), keep:find('消さない')};
+      const find = (w, not) => h.findIndex(x => x.includes(norm(w)) && !(not && x.includes(norm(not))));
+      col = {name:find('アプリ'), cat:find('カテゴリ'), user:find('メール', '登録'), pass:h.findIndex(x => x === norm('パスワード')),
+        memo:find('メモ'), date:find('変えた日'), ok:find('注意しない'), tfa:find('2段階', '方法'), keep:find('消さない'),
+        login:find('ログイン方法'), reg:find('登録メール'), ways:find('2段階認証の方法'),
+        codes:find('予備コード'), secret:find('秘密の質問')};
       rows = rows.slice(1);
     }
     const cell = (r, i) => i >= 0 ? String(r[i] ?? '').trim() : '';
@@ -859,7 +1033,10 @@
       let name = cell(r, col.name), cat = cell(r, col.cat);
       if(!cat) [name, cat] = splitCat(name);
       return { id:newId(), name, cat, user:cell(r, col.user), pass:cell(r, col.pass), memo:cell(r, col.memo),
-        passDate:normDate(cell(r, col.date)), ok:isOk(cell(r, col.ok)), tfa:parseTfa(cell(r, col.tfa)), keep:isOk(cell(r, col.keep)), updated:Date.now() };
+        passDate:normDate(cell(r, col.date)), ok:isOk(cell(r, col.ok)), tfa:parseTfa(cell(r, col.tfa)), keep:isOk(cell(r, col.keep)),
+        login:parseLogin(cell(r, col.login)), regMail:cell(r, col.reg),
+        codes:cell(r, col.codes).replace(/\r\n?/g, '\n'), secret:cell(r, col.secret).replace(/\r\n?/g, '\n'),
+        tfaWays: parseTfa(cell(r, col.tfa)) === 'on' ? parseWays(cell(r, col.ways)) : [], updated:Date.now() };
     });
     $('importInfo').textContent = `ファイルに${pendingRows.length}件入っていました。どうやって読み込みますか？（今は${entries.length}件）`;
     $('importOverlay').classList.remove('hidden');
